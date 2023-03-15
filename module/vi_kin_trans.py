@@ -16,7 +16,7 @@ def load_model(net,model_path_name,model_path):
         print('load pretrained model ', model_path)
         # checkpoint = torch.load('./results/sup_ytb/video_supervised_small_ytb/video_supervised_small_ytb_epoch45.pth')
         # checkpoint = torch.load('./results/un_nemo/video_un_small/video_un_small_epoch15.pth')
-        # checkpoint = torch.load('/home/CODE/transformer/transformer-kin/results/un_ytb/video_un_small/video_un_small_epoch45.pth')
+        # checkpoint = torch.load('/home/wwang/CODE/transformer/transformer-kin/results/un_ytb/video_un_small/video_un_small_epoch45.pth')
         checkpoint = torch.load(model_path)
         new_state_dict = OrderedDict()
         for k, v in checkpoint['arch'].items():
