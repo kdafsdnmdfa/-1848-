@@ -14,12 +14,13 @@ from timm.optim import create_optimizer
 from tqdm import tqdm
 
 parser = argparse.ArgumentParser('Training for TransNet')
-parser.add_argument('--model_name', '-net', type=str, default='video_un_small',help='video_un_small')
-parser.add_argument('--dataset', '-dt', type=str, default='un_ytb_age', help='un_ytb, un_ms1m,un_ytb_age')
+parser.add_argument('--model_name', '-net', type=str, default='video_un_small_3age',help='video_un_small,video_un_small_3age')
+# video_un_small_3age is the second time 
+parser.add_argument('--dataset', '-dt', type=str, default='un_ytb', help='un_ytb, un_ms1m')
 parser.add_argument('--tp', type=str, default=None, help="[fd, fs, md, ms]")
-parser.add_argument('--gpu', default='2', type=str, help='gpu number')
+parser.add_argument('--gpu', default='1', type=str, help='gpu number')
 parser.add_argument('--save_pth', type=str, default='./results')
-parser.add_argument('--batch', type=int, default=16)
+parser.add_argument('--batch', type=int, default=32)
 parser.add_argument('--epochs', type=int, default=100)
 parser.add_argument('--lr', type=float, default=1e-4)
 
@@ -35,7 +36,7 @@ if __name__ == '__main__':
     print('visable gpu:-----------',args.gpu)
     ####
     from utils.get_net import Model_dict
-    from utils.loader import *
+    from utils.loader import Youtube_Faces_DB_age,ContrastiveTransformations_age,contrast_transforms,FaceDataset64,ContrastiveTransformations_image,contrast_transforms_image,contrast_transforms_wo_da
 
 
     save_pth = args.save_pth + '/{}/{}/'.format(args.dataset, args.model_name)
@@ -46,10 +47,6 @@ if __name__ == '__main__':
     writer.add_text(tag='configures',
                     text_string= str(options))
     if args.dataset=='un_ytb':
-        print('trainig on youtube faces')
-        ytf_data = Youtube_Faces_DB(img_root='/local/ytb_crop',transform=ContrastiveTransformations(contrast_transforms, n_views=2))
-        train_loader = DataLoader(ytf_data,batch_size=args.batch,shuffle = True)
-    elif args.dataset=='un_ytb_age':
         print('trainig on youtube faces')
         ytf_data = Youtube_Faces_DB_age(img_root='/local/ytb_crop',transform=ContrastiveTransformations_age(contrast_transforms, n_views=2))
         train_loader = DataLoader(ytf_data,batch_size=args.batch,shuffle = True)

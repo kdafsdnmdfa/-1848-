@@ -8,20 +8,22 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 parser = argparse.ArgumentParser('Training for TransNet')
-parser.add_argument('--model_name', '-net', type=str, default='metric_viswin_old',
+parser.add_argument('--model_name', '-net', type=str, default='metric_viswin_age_age_ipcgan',
                     help='metric_viswin,metric_vit,metric_conv,viswin_id,viswin_id2,viswin_id3')
-parser.add_argument('--dataset', '-dt', type=str, default='nemo')
+######################################################### todo: nemo_age_age
+parser.add_argument('--dataset', '-dt', type=str, default='nemo_age_age',help='nemo_age,nemo,kfw1,kfw2')
 parser.add_argument('--tp', type=str, default=None, help="[fd, fs, md, ms]")
-parser.add_argument('--gpu', default='1', type=str, help='gpu number')
+parser.add_argument('--gpu', default='0', type=str, help='gpu number')
 parser.add_argument('--save_pth', type=str, default='./results')
 parser.add_argument('--batch', type=int, default=64)
-parser.add_argument('--epochs', type=int, default=60)
+parser.add_argument('--epochs', type=int, default=50)
 parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--expand_dim', type=bool, default=False)
 
 parser.add_argument('--model_path_name', type=str, default='un_ytb')
-# parser.add_argument('--model_path', type=str, default='/home/wwang/CODE/transformer/transformer-kin/results/un_ytb/video_un_small/video_un_small_epoch60.pth')
-parser.add_argument('--model_path', type=str, default='/home/wwang/CODE/transformer/transformer-kin/results/un_ytb/video_un_small/video_un_small_epoch45.pth')
+# parser.add_argument('--model_path', type=str, default='/home/wwang/CODE/transformer/un_vikin/results/un_ytb/video_un_small_3age/video_un_small_3age_epoch20.pth')
+parser.add_argument('--model_path', type=str, default='/home/wwang/CODE/transformer/un_vikin/results/un_ytb/video_un_small_ipcgan/video_un_small_ipcgan_epoch20.pth')
+# parser.add_argument('--model_path', type=str, default='/home/wwang/CODE/transformer/un_vikin/results/un_ytb/bak/video_un_small_epoch45.pth')
 # parser.add_argument('--model_path', type=str, default='./results/un_ytb/video_un_small/video_un_small_epoch68.pth')
 parser.add_argument('--embed_dim', type=str, default=48)
 
@@ -116,7 +118,7 @@ if __name__ == '__main__':
                                                                                                 acc_train))
                 else:
                     print('Type: {}, Cross_valid:{}, test acc: {:.5f}'.format(tp, 6 - cross, acc))
-                if epoch >= int(args.epochs * 9 / 10):
+                if epoch >= int(args.epochs * 9/ 10):
                     if (acc > best_acc) or (epoch == args.epochs - 1):
                         # model_sv_pth = save_pth + '{}_cross{}_{}_{}'.format(args.model_name, cross, epoch,
                         #                                                     datetime.now().replace(second=0,
