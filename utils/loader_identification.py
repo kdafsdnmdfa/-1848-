@@ -838,14 +838,14 @@ class Kfw_identification_dataset(Dataset):
 if __name__=='__main__':
     import torchvision.transforms as transforms
     # father-daughter
-    train_ls = ['/home/CODE/transformer/transformer-kin/data/KinFaceW-I/meta_data/fd_pairs.mat',
-                '/home/CODE/transformer/transformer-kin/data/KinFaceW-I/meta_data/fs_pairs.mat',
-                '/home/CODE/transformer/transformer-kin/data/KinFaceW-I/meta_data/md_pairs.mat',
-                '/home/CODE/transformer/transformer-kin/data/KinFaceW-I/meta_data/ms_pairs.mat']
-    data_pth = ['/home/CODE/transformer/transformer-kin/data/KinFaceW-I/images/father-dau',
-                '/home/CODE/transformer/transformer-kin/data/KinFaceW-I/images/father-son',
-                '/home/CODE/transformer/transformer-kin/data/KinFaceW-I/images/mother-dau',
-                '/home/CODE/transformer/transformer-kin/data/KinFaceW-I/images/mother-son']
+    train_ls = ['/home/wwang/CODE/transformer/transformer-kin/data/KinFaceW-I/meta_data/fd_pairs.mat',
+                '/home/wwang/CODE/transformer/transformer-kin/data/KinFaceW-I/meta_data/fs_pairs.mat',
+                '/home/wwang/CODE/transformer/transformer-kin/data/KinFaceW-I/meta_data/md_pairs.mat',
+                '/home/wwang/CODE/transformer/transformer-kin/data/KinFaceW-I/meta_data/ms_pairs.mat']
+    data_pth = ['/home/wwang/CODE/transformer/transformer-kin/data/KinFaceW-I/images/father-dau',
+                '/home/wwang/CODE/transformer/transformer-kin/data/KinFaceW-I/images/father-son',
+                '/home/wwang/CODE/transformer/transformer-kin/data/KinFaceW-I/images/mother-dau',
+                '/home/wwang/CODE/transformer/transformer-kin/data/KinFaceW-I/images/mother-son']
     nemo_data = Kfw_identification_dataset(train_ls,data_pth,[1,2,3,4],transform= transforms.ToTensor(),cross_shuffle =True,sf_aln = True)
     nemoloader = DataLoader(nemo_data,shuffle=True)
     for j in range(3):

@@ -58,11 +58,81 @@ video_transform_train = transforms.Compose([
     # transforms.ToTensor()
 ])
 
+
+# video_transform_train_age = transforms.Compose([
+#     # transforms.Resize((224,224)),
+#     transforms.Resize((64,64)),
+#     # transforms.RandomHorizontalFlip(p=0.4),
+#     # transforms.RandomGrayscale(),
+#     # transforms.RandomResizedCrop(size=64,scale=(0.9, 1.1)),
+#     # transforms.ToTensor()
+# ])
+
+
+
+# video_transform_train_age = transforms.Compose([
+#                                         transforms.RandomHorizontalFlip(),
+#                                         #   transforms.RandomResizedCrop(size=64, scale=(0.8, 1.2), ratio=(0.8, 1.2), interpolation=2),
+#                                         transforms.RandomResizedCrop(size=64,scale=(0.75, 1.1)),
+#                                           transforms.RandomApply([
+#                                               transforms.ColorJitter(brightness=0.5,
+#                                                                      contrast=0.5,
+#                                                                      saturation=0.5,
+#                                                                      hue=0.1),
+#                                               transforms.GaussianBlur(kernel_size=3)
+#                                           ], p=0.8),
+#                                           transforms.RandomGrayscale(p=0.2),
+                                          
+#                                         #   transforms.ToTensor(),
+#                                         #   transforms.Normalize((0.5,), (0.5,))
+#                                          ])
+
+video_transform_train_age = transforms.Compose([
+                                        transforms.RandomHorizontalFlip(),
+                                        #   transforms.RandomResizedCrop(size=64, scale=(0.8, 1.2), ratio=(0.8, 1.2), interpolation=2),
+                                        # transforms.RandomResizedCrop(size=64,scale=(0.75, 1.1)),
+                                        #   transforms.RandomApply([
+                                        #       transforms.ColorJitter(brightness=0.5,
+                                        #                              contrast=0.5,
+                                        #                              saturation=0.5,
+                                        #                              hue=0.1),
+                                        #     #   transforms.GaussianBlur(kernel_size=3)
+                                        #   ], p=0.8),
+                                        # transforms.RandomGrayscale(p=0.2),
+                                        transforms.Resize((64,64)),
+                                          
+                                        #   transforms.ToTensor(),
+                                        #   transforms.Normalize((0.5,), (0.5,))
+                                         ])
+
+video_transform_train_age_test = transforms.Compose([
+                                        transforms.Resize((64,64)),
+                                         ])
+class Video_age_Transformations(object):
+
+    def __init__(self, base_transforms, n_views=2,test = False):
+        self.base_transforms = base_transforms
+        self.n_views = n_views
+        self.test = test
+    def trans_each(self,x,rand_it=0):
+        # trans_frms = map(self.base_transforms,x)
+        if not isinstance(x,list):
+            x = [x]
+        trans_frms = [self.base_transforms(it_[rand_it]) for it_ in x]
+        im_frames = torch.stack(list(trans_frms),dim=0).type(torch.float)# [T,C, H, W]
+        im_frames = torch.permute(im_frames, (1, 0, 2, 3))#[CTHW]--> [CTHW]
+        return im_frames
+    def __call__(self, x,rand_it=0):
+        if self.test:
+            rand_it = 0
+        return [self.trans_each(x,rand_it) for i in range(self.n_views)]
+    
 video_transform_test = transforms.Compose([
     # transforms.Resize((224,224)),
     transforms.Resize((64,64)),
     # transforms.ToTensor()
 ])
+
 
 
 image_transform_train = transforms.Compose([
@@ -111,6 +181,24 @@ class ContrastiveTransformations(object):
         return im_frames
     def __call__(self, x):
         return [self.trans_each(x) for i in range(self.n_views)]
+    
+class ContrastiveTransformations_age(object):
+
+    def __init__(self, base_transforms, n_views=2):
+        self.base_transforms = base_transforms
+        self.n_views = n_views
+    def trans_each(self,x,rand_it=0):
+        # trans_frms = map(self.base_transforms,x)
+        if not isinstance(x,list):
+            x = [x]
+        trans_frms = [self.base_transforms(it_[rand_it]) for it_ in x]
+        im_frames = torch.stack(list(trans_frms),dim=0).type(torch.float)# [T,C, H, W]
+        im_frames = torch.permute(im_frames, (1, 0, 2, 3))#[CTHW]--> [CTHW]
+        return im_frames
+    def __call__(self, x,rand_it=0):
+        
+        return [self.trans_each(x,[0,rand_it][i]) for i in range(self.n_views)]
+    
 
 class Expand_transform(object):
 
@@ -683,9 +771,9 @@ class nemo_image_dataset(Dataset):
                 frm_pth = os.path.join(mem_pth,frm)
                 tem_img = read_image(frm_pth)
                 frms.append(tem_img)
-            im_frames = torch.stack(frms,dim=0)# [T,C, H, W]
+            im_frames = torch.stack(frms,dim=0)# [T,C, H, W] [100,3,160,160]
 
-            im_frames = torch.permute(im_frames, (1, 0, 2, 3))[:,::4,:,:]#[CTHW]--> [CHW]
+            im_frames = torch.permute(im_frames, (1, 0, 2, 3))[:,::4,:,:]#[CTHW]--> [CHW] [3,25,160,160]
             self.img_dict[it_nemo] = im_frames
 
     def get_img_dict(self,nemo_ls):
@@ -702,6 +790,243 @@ class nemo_image_dataset(Dataset):
         return [i for i in self.kin_list if i[0] in cross]
 
 
+class nemo_image_dataset_age(Dataset):
+    def __init__(self,list_path,img_root, cross_vali,transform,
+                 test = False):
+
+        """
+        :param list_path:       folder list of training/testing dataset
+        :param img_root:     image path
+        :param cross_vali:    cross validation's folds: e.g. [1,2,4,5]
+        :param transform:     add data augmentation
+        :param sf_sequence:   shuffle the sequence order while training
+        :param cross_shuffle: shuffle names among pair list
+        :param sf_aln:        whether shuffle all names or only img2s' names
+        :param test:          weather test
+        """
+        # kin_list is the whole 1,2,3,4,5 folds from mat
+        self.im_root = img_root
+        self.img_dict = {}
+        self.trans = transform
+        self.cout = 0
+        self.test = test
+        self.kin_list = self._read_nemols(list_path)
+        self.get_img_dict(self.kin_list)
+        if cross_vali is not None:
+            #extract matched folds e.g. [1,2,4,5]
+            self.kin_list = self._get_cross(cross_vali)
+        self.NUM_total = len(self.kin_list)
+        # self.init_ind_list()
+    def init_ind_list(self):
+        l = [0,0,0,0,0,0,
+            #  0,0,0,0,0,0,
+            #  0,0,0,0,0,0,
+             1, 2]
+        self.ind_list = random.choices(l, k=len(self.img_dict))
+
+    def __len__(self):
+        return len(self.kin_list)
+
+    def __getitem__(self, item):
+
+        if torch.is_tensor(item):
+            item = item.tolist()
+        im1_th = self.kin_list[item][2]
+
+        im1_frames = self.img_dict[im1_th]
+
+        im2_th = self.kin_list[item][3]
+
+        im2_frames = self.img_dict[im2_th]
+
+        label = self.kin_list[item][1]
+
+        # im1_frames = torch.permute(im1_frames,(3,0,1,2))
+        # im2_frames = torch.permute(im2_frames,(3,0,1,2))
+        if self.trans:
+
+            im1_frames = self.trans(im1_frames)[0].type(torch.float)
+            im2_frames = self.trans(im2_frames)[0].type(torch.float)
+
+        # if self.cout == self.NUM_total:
+        #     self.init_ind_list()
+        #     self.cout = 0
+        # else:
+        #     self.cout +=1
+        return im1_frames,im2_frames,label
+
+
+    def _read_nemols(self,nemo_ls):
+
+        with open (nemo_ls, 'rb') as fp:
+            nemo_ls = pickle.load(fp)
+
+        return nemo_ls
+
+
+    def _addto_img(self,it_nemo):
+        if not it_nemo in self.img_dict:
+            # load imgs and pack
+            # frm_root = self.im_root.replace('family','crop_frames')
+            # mem = 'f_{}/m_{}/'.format(it_nemo.split('-')[0][1:], it_nemo.split('-')[1])
+            # mem_pth = os.path.join(frm_root, mem)
+            # frm_ls = sorted(os.listdir(mem_pth),key=lambda x:int(x.split('.')[0]))
+            frm_root = self.im_root
+            mem = it_nemo
+            mem_pth = os.path.join(frm_root, mem)
+            # frm_ls = sorted(os.listdir(mem_pth),key=lambda x:int(x.split('.')[0]))
+            frm_ls = sorted(os.listdir(mem_pth))
+
+            frms = []
+            for frm in frm_ls:
+                frm_pth = os.path.join(mem_pth,frm)
+                tem_img = read_image(frm_pth)
+                frms.append([tem_img])
+            # im_frames = torch.stack(frms,dim=0)# [T,C, H, W]
+            im_frames = frms[::4]
+
+            # im_frames = torch.permute(im_frames, (1, 0, 2, 3))[:,::4,:,:]#[CTHW]--> [CHW]
+            self.img_dict[it_nemo] = im_frames
+
+    def get_img_dict(self,nemo_ls):
+        # if img not in dict
+        print("-"*20,'start loading frames')
+        for it_nemo in tqdm(nemo_ls):
+            # load imgs and pack
+            self._addto_img(it_nemo[2])
+            self._addto_img(it_nemo[3])
+        print("-" * 20, 'end loading frames')
+
+    def _get_cross(self,cross):
+
+        return [i for i in self.kin_list if i[0] in cross]
+    
+
+class nemo_image_dataset_age_age(Dataset):
+    def __init__(self,list_path,img_root, cross_vali,transform,
+                 test = False):
+
+        """
+        :param list_path:       folder list of training/testing dataset
+        :param img_root:     image path
+        :param cross_vali:    cross validation's folds: e.g. [1,2,4,5]
+        :param transform:     add data augmentation
+        :param sf_sequence:   shuffle the sequence order while training
+        :param cross_shuffle: shuffle names among pair list
+        :param sf_aln:        whether shuffle all names or only img2s' names
+        :param test:          weather test
+        """
+        # kin_list is the whole 1,2,3,4,5 folds from mat
+        self.im_root = img_root
+        self.img_dict = {}
+        self.trans = transform
+        self.cout = 0
+        self.test = test
+        self.kin_list = self._read_nemols(list_path)
+        self.get_img_dict(self.kin_list)
+        if cross_vali is not None:
+            #extract matched folds e.g. [1,2,4,5]
+            self.kin_list = self._get_cross(cross_vali)
+        self.NUM_total = len(self.kin_list)
+        self.init_ind_list()
+    def init_ind_list(self):
+        # l1 = [0,0,0,0,3]
+        # l2 = [0,0,0,0,1]
+        l1 = [0,0,3]
+        l2 = [0,0,1]
+        self.ind_list_l1 = random.choices(l1, k=len(self.img_dict))
+        self.ind_list_l2 = random.choices(l2, k=len(self.img_dict))
+
+    def __len__(self):
+        return len(self.kin_list)
+
+    def __getitem__(self, item):
+
+        if torch.is_tensor(item):
+            item = item.tolist()
+        im1_th = self.kin_list[item][2]
+
+        im1_frames = self.img_dict[im1_th]
+
+        im2_th = self.kin_list[item][3]
+
+        im2_frames = self.img_dict[im2_th]
+
+        label = self.kin_list[item][1]
+
+        # im1_frames = torch.permute(im1_frames,(3,0,1,2))
+        # im2_frames = torch.permute(im2_frames,(3,0,1,2))
+        if self.trans:
+
+            im1_frames = self.trans(im1_frames,self.ind_list_l1[item])[0].type(torch.float)
+            im2_frames = self.trans(im2_frames,self.ind_list_l2[item])[0].type(torch.float)
+
+        if self.cout == self.NUM_total:
+            self.init_ind_list()
+            self.cout = 0
+        else:
+            self.cout +=1
+        return im1_frames,im2_frames,label
+
+
+    def _read_nemols(self,nemo_ls):
+
+        with open (nemo_ls, 'rb') as fp:
+            nemo_ls = pickle.load(fp)
+
+        return nemo_ls
+
+
+    def _addto_img(self,it_nemo):
+        if not it_nemo in self.img_dict:
+            # load imgs and pack
+            # frm_root = self.im_root.replace('family','crop_frames')
+            # mem = 'f_{}/m_{}/'.format(it_nemo.split('-')[0][1:], it_nemo.split('-')[1])
+            # mem_pth = os.path.join(frm_root, mem)
+            # frm_ls = sorted(os.listdir(mem_pth),key=lambda x:int(x.split('.')[0]))
+            frm_root = self.im_root
+            mem = it_nemo
+            mem_pth = os.path.join(frm_root, mem)
+            # frm_ls = sorted(os.listdir(mem_pth),key=lambda x:int(x.split('.')[0]))
+            frm_ls = sorted(os.listdir(mem_pth))
+
+            frms = []
+            for frm in frm_ls:
+                frm_pth = os.path.join(mem_pth,frm)
+                tem_img = read_image(frm_pth)
+                # age_10_pth = frm_pth.replace('frames','frames_age/inference_results/10')
+                age_20_pth = frm_pth.replace('frames','frames_age2/20')
+                age_30_pth = frm_pth.replace('frames','frames_age2/30')
+                age_40_pth = frm_pth.replace('frames','frames_age2/40')
+                # age_50_pth = frm_pth.replace('frames','frames_age/inference_results/50')
+                # age_60_pth = frm_pth.replace('frames','frames_age/inference_results/60')
+                # tem_img_age_10 = read_image(age_10_pth)
+                tem_img_age_20 = read_image(age_20_pth)
+                tem_img_age_30 = read_image(age_30_pth)
+                tem_img_age_40 = read_image(age_40_pth)
+                # tem_img_age_50 = read_image(age_50_pth)
+                # tem_img_age_60 = read_image(age_60_pth)
+                # frms.append([tem_img,tem_img_age_10,tem_img_age_20,tem_img_age_30,tem_img_age_40,tem_img_age_50,tem_img_age_60])
+                frms.append([tem_img,tem_img_age_20,tem_img_age_30,tem_img_age_40])
+                # frms.append([tem_img])
+            # im_frames = torch.stack(frms,dim=0)# [T,C, H, W]
+            im_frames = frms[::4]
+
+            # im_frames = torch.permute(im_frames, (1, 0, 2, 3))[:,::4,:,:]#[CTHW]--> [CHW]
+            self.img_dict[it_nemo] = im_frames
+
+    def get_img_dict(self,nemo_ls):
+        # if img not in dict
+        print("-"*20,'start loading frames')
+        for it_nemo in tqdm(nemo_ls):
+            # load imgs and pack
+            self._addto_img(it_nemo[2])
+            self._addto_img(it_nemo[3])
+        print("-" * 20, 'end loading frames')
+
+    def _get_cross(self,cross):
+
+        return [i for i in self.kin_list if i[0] in cross]
 
 class nemo_image_dataset2(Dataset):
     def __init__(self,list_path,img_root, cross_vali,transform,
@@ -877,11 +1202,103 @@ class Youtube_Faces_DB():
             with open('./data/ytf.pickle', 'wb') as handle:
                 pickle.dump(self.img_dict, handle)
 
+class Youtube_Faces_DB_age():
+    def __init__(self,img_root='/local/ytb_crop',transform=None,
+                 test = False):
+
+        """
+        :param list_path:       folder list of training/testing dataset
+        :param img_root:     image path
+        :param cross_vali:    cross validation's folds: e.g. [1,2,4,5]
+        :param transform:     add data augmentation
+        :param sf_sequence:   shuffle the sequence order while training
+        :param cross_shuffle: shuffle names among pair list
+        :param sf_aln:        whether shuffle all names or only img2s' names
+        :param test:          weather test
+        """
+        # kin_list is the whole 1,2,3,4,5 folds from mat
+        self.im_root = img_root
+        self.img_dict = []
+        self.trans = transform
+        self.cout = 0
+        self.test = test
+        self.read_YTF(img_root)
+        self.NUM_total = len(self.img_dict)
+        self.init_ind_list()
+        
+        
+    def init_ind_list(self):
+        l = [0,0,0,0,0,0,
+             0,0,0,0,0,0,
+            #  0,0,0,0,0,0,
+             1, 2, 3]
+        self.ind_list = random.choices(l, k=len(self.img_dict))
+      
+    def __len__(self):
+        return len(self.img_dict)
+
+    def __getitem__(self, item):
+
+        if torch.is_tensor(item):
+            item = item.tolist()
+        img_frms = self.img_dict[item]
+        if self.trans:
+            im1_frames = self.trans(img_frms,self.ind_list[item])
+        
+        if self.cout == self.NUM_total:
+            self.init_ind_list()
+            self.cout = 0
+        else:
+            self.cout +=1
+        
+        return im1_frames
+
+
+    def read_YTF(self,img_root):
+        if os.path.exists('/local/data/ytf-3age.pickle'):
+            with open('/local/data/ytf-3age.pickle', 'rb') as handle:
+                self.img_dict = pickle.load(handle)
+            print('lenth of YTF: ',len(self.img_dict))
+        else:
+            ######## min len frames is 48 
+            print("-"*20,'start loading frames')
+            p_folder_ls = sorted(os.listdir(img_root))
+            for p_folder in  tqdm(p_folder_ls):
+                p_folder_pth = os.path.join(img_root,p_folder)
+                c_folder_ls = sorted(os.listdir(p_folder_pth))
+                for c_folder in c_folder_ls:
+                    c_folder_pth = os.path.join(p_folder_pth,c_folder)
+                    frm_ls = sorted(os.listdir(c_folder_pth))
+                    frms = []
+                    for frm in frm_ls[:48]:
+                        frm_pth = os.path.join(c_folder_pth,frm)
+                        tem_img = read_image(frm_pth) #check channel
+                        # age_10_pth = frm_pth.replace('ytb_crop','ytb_crop_age/inference_results/10')
+                        age_20_pth = frm_pth.replace('ytb_crop','ytb_crop_age/inference_results/20')
+                        age_30_pth = frm_pth.replace('ytb_crop','ytb_crop_age/inference_results/30')
+                        age_40_pth = frm_pth.replace('ytb_crop','ytb_crop_age/inference_results/40')
+                        # age_50_pth = frm_pth.replace('ytb_crop','ytb_crop_age/inference_results/50')
+                        # age_60_pth = frm_pth.replace('ytb_crop','ytb_crop_age/inference_results/60')
+                        # tem_img_age_10 = read_image(age_10_pth)
+                        tem_img_age_20 = read_image(age_20_pth)
+                        tem_img_age_30 = read_image(age_30_pth)
+                        tem_img_age_40 = read_image(age_40_pth)
+                        # tem_img_age_50 = read_image(age_50_pth)
+                        # tem_img_age_60 = read_image(age_60_pth)
+                        frms.append([tem_img,tem_img_age_20,tem_img_age_30,tem_img_age_40])
+                        
+                    # im_frames = torch.stack(frms,dim=0)# [T,C, H, W]
+                    # im_frames = torch.permute(im_frames, (1, 0, 2, 3))#[CTHW]--> [CTHW]
+                    self.img_dict.append(frms)
+            print("-" * 20, 'end loading frames')
+            print('-'*20,'saving img_dict')
+            with open('/local/data/ytf-3age.pickle', 'wb') as handle:
+                pickle.dump(self.img_dict, handle)
 
 
 # ‘YouTube Faces DB’ dataset
 class Unsupervise_FIW():
-    def __init__(self,img_root='/home/DATA/FIW/origin/train-faces',transform=None,
+    def __init__(self,img_root='/home/wwang/DATA/FIW/origin/train-faces',transform=None,
                  test = False):
 
         """
@@ -1018,7 +1435,7 @@ class Unsupervise_Nemo():
                 pickle.dump(self.img_dict, handle)
 
 class Supervise_FIW():
-    def __init__(self,img_root='/home/DATA/FIW/origin/train-faces',label_root = '/home/DATA/FIW/origin/fitted_original_5split',transform=None,
+    def __init__(self,img_root='/home/wwang/DATA/FIW/origin/train-faces',label_root = '/home/wwang/DATA/FIW/origin/fitted_original_5split',transform=None,
                  test = False):
 
         """
@@ -1397,12 +1814,12 @@ class FaceDataset64(Dataset):
 if __name__=='__main__':
     #### 1. check dataloader
     # from torch.utils.data import DataLoader
-    # dset = nemo_image_dataset('/home/Documents/DATA/kinship/Nemo/label/train_list/B-B.pkl',
-    #              '/home/Documents/DATA/kinship/Nemo/family',
+    # dset = nemo_image_dataset('/home/wei/Documents/DATA/kinship/Nemo/label/train_list/B-B.pkl',
+    #              '/home/wei/Documents/DATA/kinship/Nemo/family',
     #              [1,2,3,4],
     #              transform=video_transform_train)
-    # # fiw_dataset('/home/Documents/DATA/kinship/KinFaceW-I/meta_data',
-    # #             '/home/Documents/DATA/kinship/KinFaceW-I/images/father-dau',
+    # # fiw_dataset('/home/wei/Documents/DATA/kinship/KinFaceW-I/meta_data',
+    # #             '/home/wei/Documents/DATA/kinship/KinFaceW-I/images/father-dau',
     # #             [1,2,3,4],
     # #             mdr_transform_train)
     # loader = DataLoader(dset,batch_size=3,shuffle = True)
@@ -1410,7 +1827,7 @@ if __name__=='__main__':
     # vi1,vi2,label = loader.next()
     # print(label)
     #### 2. generate images
-    # gen_frames('/home/Documents/DATA/kinship/Nemo/family')
+    # gen_frames('/home/wei/Documents/DATA/kinship/Nemo/family')
     #### 3. check ytf dataset
     # from torch.utils.data import DataLoader
     # ytf = Youtube_Faces_DB(img_root='/local/frame_images_DB_crop',transform=ContrastiveTransformations(contrast_transforms, n_views=2))

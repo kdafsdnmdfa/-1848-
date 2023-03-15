@@ -32,7 +32,7 @@ plt.rcParams["savefig.bbox"] = 'tight'
 
 # pth_lst = os.listdir('/local/ytb_crop/Carly_Gullickson/3/')
 # root_pth = '/local/ytb_crop/Carly_Gullickson/3/'
-root_pth = './data/20/'
+root_pth = './data/fig1/'
 pth_lst = os.listdir(root_pth)
 
 print(pth_lst)
@@ -42,15 +42,15 @@ print(pth_lst)
 #     orig_img = Image.open(pt_pth)
 #     savename = pt
 
-for i_img in tqdm(range(1,13)):
+for i_img in tqdm(range(1,3)):
     # if you change the seed, make sure that the randomly-applied transforms
     # properly show that the image can be both transformed and *not* transformed!
     # torch.manual_seed(0)
     # pt_pth = '/local/ytb_crop/Carly_Gullickson/3/3.{}.jpg'.format(i_img)
-    pt_pth = './data/20/3.{}.jpg'.format(i_img)
+    pt_pth = './data/fig1/img{}.jpg'.format(i_img)
 
     orig_img = Image.open(pt_pth)
-    savename = '3.{}.jpg'.format(i_img)
+    savename = '7{}.jpg'.format(i_img)
 
    
     def plot(imgs, with_orig=False, row_title=None, **imshow_kwargs):
@@ -83,4 +83,4 @@ for i_img in tqdm(range(1,13)):
     # gray_img = T.Grayscale()(orig_img)
     gray_img = contrast_transforms(orig_img)
     # plot([gray_img], cmap='gray')
-    gray_img.save('./data/da_img_au1_20age/{}'.format(savename))
+    gray_img.save('./data/out/{}'.format(savename))
